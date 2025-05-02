@@ -1,7 +1,7 @@
 
-import io.cucumber.gherkin.Gherkin;
-import io.cucumber.messages.IdGenerator;
-import io.cucumber.messages.types.*;
+import gherkin.AstBuilder;
+import gherkin.Parser;
+import gherkin.ast.*;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -19,22 +19,12 @@ import java.util.List;
 public class GherkinToJUnitXmlConverter {
 
     public static void main(String[] args) throws Exception {
-        String featurePath = "src/test/resources/feature.feature"; // path to your .feature file
-        List<Envelope> envelopes = Gherkin.fromPaths(
-                List.of(Paths.get(featurePath)),
-                false,
-                true,
-                true,
-                new IdGenerator.Incrementing()
-        );
+        String featurePath = "src/test/resources/sample.feature";
+        String content = new String(Files.readAllBytes(Paths.get(featurePath)));
 
-        GherkinDocument doc = envelopes.stream()
-                .filter(e -> e.getGherkinDocument().isPresent())
-                .map(e -> e.getGherkinDocument().get())
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("No Gherkin document found"));
-
-        Feature feature = doc.getFeature().orElseThrow();
+        Parser<GherkinDocument> parser = new Parser<>(new AstBuilder());
+        GherkinDocument doc = parser.parse(content);
+        Feature feature = doc.getFeature();
 
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -44,34 +34,65 @@ public class GherkinToJUnitXmlConverter {
         testsuite.setAttribute("name", feature.getName());
         xmlDoc.appendChild(testsuite);
 
-        for (FeatureChild child : feature.getChildren()) {
-            if (child.getScenario().isPresent()) {
-                Scenario scenario = child.getScenario().get();
-
+        for (ScenarioDefinition scenarioDef : feature.getChildren()) {
+            if (scenarioDef instanceof Scenario) {
+                Scenario sc = (Scenario) scenarioDef;
                 Element testcase = xmlDoc.createElement("testcase");
                 testcase.setAttribute("classname", feature.getName());
-                testcase.setAttribute("name", scenario.getName());
+                testcase.setAttribute("name", sc.getName());
 
-                for (Step step : scenario.getSteps()) {
-                    Element stepElement = xmlDoc.createElement("system-out");
-                    stepElement.setTextContent(step.getKeyword() + step.getText());
-                    testcase.appendChild(stepElement);
-
-                    if (step.getDataTable().isPresent()) {
-                        Element dataTable = xmlDoc.createElement("system-out");
-                        StringBuilder tableText = new StringBuilder("DataTable:\n");
-                        for (TableRow row : step.getDataTable().get().getRows()) {
-                            for (TableCell cell : row.getCells()) {
-                                tableText.append(cell.getValue()).append(" | ");
-                            }
-                            tableText.append("\n");
-                        }
-                        dataTable.setTextContent(tableText.toString());
-                        testcase.appendChild(dataTable);
-                    }
+                StringBuilder stepText = new StringBuilder();
+                for (Step step : sc.getSteps()) {
+                    stepText.append(step.getKeyword()).append(step.getText()).append(".......................................passed\n");
                 }
 
+                Element systemOut = xmlDoc.createElement("system-out");
+                CDATASection cdata = xmlDoc.createCDATASection(stepText.toString());
+                systemOut.appendChild(cdata);
+                testcase.appendChild(systemOut);
+
                 testsuite.appendChild(testcase);
+            } else if (scenarioDef instanceof ScenarioOutline) {
+                ScenarioOutline outline = (ScenarioOutline) scenarioDef;
+                for (Examples examples : outline.getExamples()) {
+                    List<TableRow> rows = examples.getTableBody();
+                    List<TableCell> headers = examples.getTableHeader().getCells();
+
+                    for (TableRow row : rows) {
+                        Element testcase = xmlDoc.createElement("testcase");
+                        String exampleName = outline.getName() + " [" + row.getCells().get(0).getValue() + "]";
+                        testcase.setAttribute("classname", feature.getName());
+                        testcase.setAttribute("name", exampleName);
+
+                        StringBuilder stepText = new StringBuilder();
+                        for (Step step : outline.getSteps()) {
+                            String text = step.getText();
+                            for (int i = 0; i < headers.size(); i++) {
+                                String placeholder = "<" + headers.get(i).getValue() + ">";
+                                String value = row.getCells().get(i).getValue();
+                                text = text.replace(placeholder, value);
+                            }
+                            stepText.append(step.getKeyword()).append(text).append(".......................................passed\n");
+                        }
+
+                        Element systemOut = xmlDoc.createElement("system-out");
+                        CDATASection cdata = xmlDoc.createCDATASection(stepText.toString());
+                        systemOut.appendChild(cdata);
+                        testcase.appendChild(systemOut);
+
+                        // Simulate failure based on values
+                        String lower = stepText.toString().toLowerCase();
+                        if (lower.contains("invalid") || lower.contains("fail")) {
+                            Element failure = xmlDoc.createElement("failure");
+                            failure.setAttribute("message", "Simulated failure");
+                            CDATASection failDetails = xmlDoc.createCDATASection("StackTrace:\nSimulated stack trace for failed step.");
+                            failure.appendChild(failDetails);
+                            testcase.appendChild(failure);
+                        }
+
+                        testsuite.appendChild(testcase);
+                    }
+                }
             }
         }
 
@@ -83,6 +104,6 @@ public class GherkinToJUnitXmlConverter {
         StreamResult result = new StreamResult(new File("junit_output.xml"));
         transformer.transform(source, result);
 
-        System.out.println("Gherkin feature converted to JUnit XML: junit_output.xml");
+        System.out.println("Gherkin feature converted to JUnit XML with CDATA: junit_output.xml");
     }
 }

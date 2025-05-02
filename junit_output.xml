@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<testsuite name="Login functionality">
+    <testcase classname="Login functionality" name="Successful login">
+        <system-out><![CDATA[When the user enters valid credentials.......................................passed
+Then the user should be redirected to the dashboard.......................................passed
+]]></system-out>
+    </testcase>
+    <testcase classname="Login functionality" name="Failed login">
+        <system-out><![CDATA[When the user enters incorrect credentials.......................................passed
+Then an error message should be displayed.......................................passed
+And the user remains on the login page.......................................passed
+]]></system-out>
+    </testcase>
+    <testcase classname="Login functionality" name="Login attempts with multiple inputs [user1]">
+        <system-out><![CDATA[When the user enters "user1" and "pass123".......................................passed
+Then the system should respond with "Login successful".......................................passed
+]]></system-out>
+    </testcase>
+    <testcase classname="Login functionality" name="Login attempts with multiple inputs [user2]">
+        <system-out><![CDATA[When the user enters "user2" and "wrong".......................................passed
+Then the system should respond with "Invalid credentials".......................................passed
+]]></system-out>
+        <failure message="Simulated failure"><![CDATA[StackTrace:
+Simulated stack trace for failed step.]]></failure>
+    </testcase>
+</testsuite>
