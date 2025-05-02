@@ -1,0 +1,20 @@
+
+[zephyr]
+upload_url = "https://milan.yourzephyr.com/flex/services/rest/v4/upload-file/automation/create-and-execute-job"
+auth_token = "efd6dabbf40133a7e021a856d802fe5ddb3995d8"
+
+[automationJobDetail]
+releaseId = "49"
+jobName = "Demo"
+automationFramework = "Cucumber"
+cycleName = "Test Cycle -  LME Example"
+jobDetailTcrCatalogTreeId = "8690"
+projectId = "1"
+testRepositoryPath = "Release 3.4 > Automation"
+cycleStartDateStr = "03/26/2025"
+cycleEndDateStr = "03/29/2025"
+isReuse = false
+timeStamp = true
+createPackage = false
+assignResultsTo = "-10"
+phaseName = "Automation"
