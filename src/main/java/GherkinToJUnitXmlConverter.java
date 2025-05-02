@@ -15,6 +15,9 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class GherkinToJUnitXmlConverter {
 
@@ -34,12 +37,39 @@ public class GherkinToJUnitXmlConverter {
         testsuite.setAttribute("name", feature.getName());
         xmlDoc.appendChild(testsuite);
 
+        // Collect feature tags
+        Set<String> featureTags = feature.getTags().stream()
+            .map(t -> t.getName().replace("@", ""))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (feature.getDescription() != null && !feature.getDescription().trim().isEmpty()) {
+            Element systemOut = xmlDoc.createElement("system-out");
+            CDATASection featureDesc = xmlDoc.createCDATASection("Feature Description:\n" + feature.getDescription().trim());
+            systemOut.appendChild(featureDesc);
+            testsuite.appendChild(systemOut);
+        }
+
         for (ScenarioDefinition scenarioDef : feature.getChildren()) {
             if (scenarioDef instanceof Scenario) {
                 Scenario sc = (Scenario) scenarioDef;
                 Element testcase = xmlDoc.createElement("testcase");
                 testcase.setAttribute("classname", feature.getName());
                 testcase.setAttribute("name", sc.getName());
+
+                Set<String> allTags = new LinkedHashSet<>(featureTags);
+                allTags.addAll(sc.getTags().stream()
+                    .map(t -> t.getName().replace("@", ""))
+                    .collect(Collectors.toSet()));
+
+                if (!allTags.isEmpty()) {
+                    Element tagsEl = xmlDoc.createElement("tags");
+                    for (String tag : allTags) {
+                        Element tagEl = xmlDoc.createElement("tag");
+                        tagEl.setTextContent(tag);
+                        tagsEl.appendChild(tagEl);
+                    }
+                    testcase.appendChild(tagsEl);
+                }
 
                 StringBuilder stepText = new StringBuilder();
                 for (Step step : sc.getSteps()) {
@@ -58,11 +88,32 @@ public class GherkinToJUnitXmlConverter {
                     List<TableRow> rows = examples.getTableBody();
                     List<TableCell> headers = examples.getTableHeader().getCells();
 
+                    Set<String> scenarioTags = outline.getTags().stream()
+                        .map(t -> t.getName().replace("@", ""))
+                        .collect(Collectors.toSet());
+                    Set<String> exampleTags = examples.getTags().stream()
+                        .map(t -> t.getName().replace("@", ""))
+                        .collect(Collectors.toSet());
+
+                    Set<String> allTags = new LinkedHashSet<>(featureTags);
+                    allTags.addAll(scenarioTags);
+                    allTags.addAll(exampleTags);
+
                     for (TableRow row : rows) {
                         Element testcase = xmlDoc.createElement("testcase");
                         String exampleName = outline.getName() + " [" + row.getCells().get(0).getValue() + "]";
                         testcase.setAttribute("classname", feature.getName());
                         testcase.setAttribute("name", exampleName);
+
+                        if (!allTags.isEmpty()) {
+                            Element tagsEl = xmlDoc.createElement("tags");
+                            for (String tag : allTags) {
+                                Element tagEl = xmlDoc.createElement("tag");
+                                tagEl.setTextContent(tag);
+                                tagsEl.appendChild(tagEl);
+                            }
+                            testcase.appendChild(tagsEl);
+                        }
 
                         StringBuilder stepText = new StringBuilder();
                         for (Step step : outline.getSteps()) {
@@ -80,7 +131,6 @@ public class GherkinToJUnitXmlConverter {
                         systemOut.appendChild(cdata);
                         testcase.appendChild(systemOut);
 
-                        // Simulate failure based on values
                         String lower = stepText.toString().toLowerCase();
                         if (lower.contains("invalid") || lower.contains("fail")) {
                             Element failure = xmlDoc.createElement("failure");
@@ -104,6 +154,6 @@ public class GherkinToJUnitXmlConverter {
         StreamResult result = new StreamResult(new File("junit_output.xml"));
         transformer.transform(source, result);
 
-        System.out.println("Gherkin feature converted to JUnit XML with CDATA: junit_output.xml");
+        System.out.println("Feature converted to JUnit XML with inherited tags: junit_output.xml");
     }
 }
