@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class ZephyrUploader {
 
-    public static void uploadResults(String xmlFilePath, String configPath) throws IOException {
+    public static void uploadToZephyr(String xmlFilePath, String configPath) throws IOException {
         Toml toml = new Toml().read(new File(configPath));
 
         String uploadUrl = toml.getString("zephyr.upload_url");
