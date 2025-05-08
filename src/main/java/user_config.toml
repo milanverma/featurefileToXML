@@ -1,0 +1,22 @@
+[behavior]
+
+# Whether to mark all test steps and cases as 'passed' by default.
+# If set to false, the tool will look for keywords like "fail" or "invalid"
+# to simulate a failed test case.
+mark_all_passed = true
+
+# An optional tag to add to every test case (in addition to those in the .feature file).
+# Useful for labeling or filtering in test management/reporting tools.
+extra_tag = "injected"
+
+# Whether to include timestamps (ISO 8601) in the JUnit XML <testcase> elements.
+# Helps with reporting tools or debugging CI pipelines.
+include_timestamp = true
+
+# Whether to use the Gherkin 'Feature' name as the JUnit <classname> in the XML output.
+# If false, the classname will default to "DefaultClass".
+feature_name_as_classname = true
+
+# Flag to request test result upload to an external tool like Zephyr.
+# Currently disabled — shown for future premium features.
+upload = false

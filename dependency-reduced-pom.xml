@@ -5,6 +5,7 @@
   <artifactId>featurefileToXML</artifactId>
   <version>1.0-SNAPSHOT</version>
   <build>
+    <finalName>featurefileToXML</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
